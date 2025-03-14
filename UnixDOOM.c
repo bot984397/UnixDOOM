@@ -32,6 +32,12 @@ struct fb_info_kernel {
 
 static struct fb_info_kernel *doom_fb_info_kernel = NULL;
 
+#define UDOOM_KEY_MAX 256
+static unsigned char key_state[UDOOM_KEY_MAX];
+static DEFINE_SPINLOCK(key_state_lock);
+
+void doom_process_keys(void);
+
 /* Game loop control */
 
 static int DoomStop = 0;
@@ -48,7 +54,6 @@ void *DoomMalloc(int size) {
       DOOM_PRINT("DoomMalloc: NULL POINTER [SIZE: %d]\n", size);
    }
    return ret;
-   //return kmalloc(size, GFP_KERNEL);
 }
 
 void DoomFree(void *ptr) {
@@ -66,7 +71,6 @@ void *DoomOpen(const char *filename, const char *mode) {
                  PTR_ERR(filp));
       return NULL;
    }
-   DOOM_PRINT("DoomOpen: Opened %s for reading and writing\n", filename);
    return filp;
 }
 
@@ -240,6 +244,8 @@ static int doom_thread_func(void *data) {
       unsigned char *fb = doom_get_framebuffer(4);
       doom_blt_to_framebuffer(doom_fb_info_kernel, fb, 320, 200);
 
+      doom_process_keys();
+
       msleep(33);
    }
    DOOM_PRINT("Thread exiting\n");
@@ -308,6 +314,15 @@ static void doom_input_disconnect(struct input_handle *handle) {
 
 static void doom_input_event(struct input_handle *handle, unsigned int type,
                              unsigned int code, int value) {
+   unsigned long flags;
+
+   if (type == EV_KEY && code < UDOOM_KEY_MAX) {
+      spin_lock_irqsave(&key_state_lock, flags);
+      key_state[code] = value ? 1 : 0;
+      spin_unlock_irqrestore(&key_state_lock, flags);
+   }
+
+   /*
    if (type == EV_KEY) {
       DOOM_PRINT("Input: Key event code=%u, value=%d\n", code, value);
    } else if (type == EV_REL) {
@@ -315,6 +330,44 @@ static void doom_input_event(struct input_handle *handle, unsigned int type,
    } else if (type == EV_ABS) {
       DOOM_PRINT("Input: Absolute event code=%u, value=%d\n", code, value);
    }
+   */
+}
+
+static int doom_get_key_state(unsigned int key_code) {
+   unsigned long flags;
+   int state;
+
+   if (key_code >= UDOOM_KEY_MAX) {
+      return 0;
+   }
+
+   spin_lock_irqsave(&key_state_lock, flags);
+   state = key_state[key_code];
+   spin_unlock_irqrestore(&key_state_lock, flags);
+
+   return state;
+}
+
+void doom_process_keys(void) {
+   doom_get_key_state(KEY_LEFT)     ? doom_key_down(DOOM_KEY_LEFT_ARROW)
+                                    : doom_key_up(DOOM_KEY_LEFT_ARROW);
+   doom_get_key_state(KEY_UP)       ? doom_key_down(DOOM_KEY_UP_ARROW)
+                                    : doom_key_up(DOOM_KEY_UP_ARROW);
+   doom_get_key_state(KEY_RIGHT)    ? doom_key_down(DOOM_KEY_RIGHT_ARROW)
+                                    : doom_key_up(DOOM_KEY_RIGHT_ARROW);
+   doom_get_key_state(KEY_DOWN)     ? doom_key_down(DOOM_KEY_DOWN_ARROW)
+                                    : doom_key_up(DOOM_KEY_DOWN_ARROW);
+   /* For some fucking reason, KEY_ENTER reports as 13 instead of 28 */
+   doom_get_key_state(28)           ? doom_key_down(DOOM_KEY_ENTER)
+                                    : doom_key_up(DOOM_KEY_ENTER);
+   doom_get_key_state(KEY_SPACE)    ? doom_key_down(DOOM_KEY_SPACE)
+                                    : doom_key_up(DOOM_KEY_SPACE);
+   doom_get_key_state(KEY_LEFTCTRL) ? doom_key_down(DOOM_KEY_CTRL)
+                                    : doom_key_up(DOOM_KEY_CTRL);
+   doom_get_key_state(KEY_ESC)      ? doom_key_down(DOOM_KEY_ESCAPE)
+                                    : doom_key_up(DOOM_KEY_ESCAPE);
+   doom_get_key_state(KEY_Y)        ? doom_key_down(DOOM_KEY_Y)
+                                    : doom_key_up(DOOM_KEY_Y);
 }
 
 static const struct input_device_id doom_input_ids[] = {
