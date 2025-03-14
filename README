@@ -1,0 +1,8 @@
+              --- UnixDOOM - DOOM running in the Linux kernel ---               
+                 Inspired by [https://github.com/NSG650/NtDOOM]                 
+
+      Usage:
+         [1] Build the project using the included makefile
+         [2] Place a DOOM WAD file at [/DOOM/DOOM.WAD]
+         [3] Load the kernel module with [insmod <path/to/UnixDOOM.ko>]
+         [4] Unload the kernel module with [rmmod UnixDOOM]
