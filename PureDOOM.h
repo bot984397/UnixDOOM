@@ -10131,7 +10131,6 @@ void D_DoomMain(void)
     doom_print("W_Init: Init WADfiles.\n");
     W_InitMultipleFiles(wadfiles);
 
-
     // Check for -file in shareware
     if (modifiedgame)
     {
@@ -16258,7 +16257,9 @@ int I_GetHeapSize(void)
 byte* I_ZoneBase(int* size)
 {
     *size = mb_used * 1024 * 1024;
-    return (byte*)doom_malloc(*size);
+    byte *res = (byte*)doom_malloc(*size);
+    return res;
+    //return (byte*)doom_malloc(*size);
 }
 
 

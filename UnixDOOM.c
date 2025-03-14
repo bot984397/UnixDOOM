@@ -43,11 +43,17 @@ void DoomPrint(const char *str) {
 }
 
 void *DoomMalloc(int size) {
-   return kmalloc(size, GFP_KERNEL);
+   void *ret = kvmalloc(size, GFP_KERNEL);
+   if (ret == NULL) {
+      DOOM_PRINT("DoomMalloc: NULL POINTER [SIZE: %d]\n", size);
+   }
+   return ret;
+   //return kmalloc(size, GFP_KERNEL);
 }
 
 void DoomFree(void *ptr) {
-   kfree(ptr);
+   return;
+   //kfree(ptr);
 }
 
 void *DoomOpen(const char *filename, const char *mode) {
@@ -185,6 +191,7 @@ void DoomGetTime(int *sec, int *usec) {
 }
 
 void DoomExit(int code) {
+   DOOM_PRINT("DoomExit: EXITING\n");
    DoomStop = 1;
 }
 
@@ -227,7 +234,7 @@ static void doom_blt_to_framebuffer(struct fb_info_kernel *fb_info,
 static struct task_struct *doom_thread;
 
 static int doom_thread_func(void *data) {
-   while (!kthread_should_stop() && !DoomStop) {
+   while (!kthread_should_stop()) {
       doom_update();
       
       unsigned char *fb = doom_get_framebuffer(4);
@@ -390,6 +397,7 @@ static int __init unix_doom_init(void) {
       input_unregister_handler(&doom_input_handler);
       return -ENOMEM;
    }
+   DOOM_PRINT("unix_doom_init: fb_init = %p\n", fb_virt);
 
    doom_fb_info_kernel = init_fb(fb_virt, fb);
    if (!doom_fb_info_kernel) {
